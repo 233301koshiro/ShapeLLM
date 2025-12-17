@@ -23,8 +23,8 @@ from llava.model import *
 from llava.constants import DEFAULT_POINT_PATCH_TOKEN, DEFAULT_PT_START_TOKEN, DEFAULT_PT_END_TOKEN
 
 
-def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, load_4bit=False, device_map="auto", device="cuda"):
-    kwargs = {"device_map": device_map}
+def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, load_4bit=False, device="cuda"):
+    kwargs = {}
 
     if load_8bit:
         kwargs['load_in_8bit'] = True
@@ -34,7 +34,8 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
             load_in_4bit=True,
             bnb_4bit_compute_dtype=torch.float16,
             bnb_4bit_use_double_quant=True,
-            bnb_4bit_quant_type='nf4'
+            bnb_4bit_quant_type='nf4',
+            llm_int8_skip_modules=["vision_tower", "mm_projector","lm_head", "embed_tokens"]
         )
     else:
         kwargs['torch_dtype'] = torch.float16
@@ -97,6 +98,8 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
         tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
         model = LlavaLlamaForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
 
+    if not (load_8bit or load_4bit):
+        model.to(device)
     mm_use_pt_start_end = getattr(model.config, "mm_use_pt_start_end", False)
     mm_use_pt_patch_token = getattr(model.config, "mm_use_pt_patch_token", True)
     if mm_use_pt_patch_token:
